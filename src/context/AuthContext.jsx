@@ -4,7 +4,7 @@ const Context = createContext({});
 const AuthProvider = (props) => {
   const navigate = useNavigate();
   const onLogin = () => {
-    navigate("/drawingPage");
+    navigate("/drawcircle");
     console.log("hoeeo");
   };
   return (

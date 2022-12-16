@@ -25,7 +25,7 @@ const Timer = () => {
   useEffect(() => {
     if (timer === 0) {
       navigate("/");
-      setTimer(20);
+      setTimer(60);
       localStorage.removeItem("timer");
     }
   }, [timer]);

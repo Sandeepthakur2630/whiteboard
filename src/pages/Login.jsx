@@ -9,6 +9,10 @@ const Login = () => {
   };
   return (
     <div>
+      {/* <div className="w-fit mx-auto flex gap-2 bg-[red]">
+        <div className="bg-[blue]">Login</div>
+        <div>Signup</div>
+      </div> */}
       <div className=" rounded-[33px] flex items-center justify-center">
         <div className="w-[570px] h-[344px] mt-[350px] bg-[whitesmoke] flex flex-col gap-5 justify-center items-center rounded-[33px]">
           <div className="">

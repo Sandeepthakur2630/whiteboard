@@ -1,174 +1,221 @@
-import { useEffect, useState } from "react";
-import React from "react";
+import styled from "styled-components";
+import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
+import EditIcon from "@mui/icons-material/Edit";
+import Konva, { Stage, Layer, Rect, Text, Line } from "react-konva";
+import React, { useEffect, useRef, useState } from "react";
+import Holder from "../components/Holder";
+import { tool } from "../utils";
+import Timer from "../components/Timer";
+function DrawCircle() {
+  const [elements, setElements] = useState([]);
+  const [redo, setRedo] = React.useState([]);
+  const [activeTab, setActiveTab] = useState(1);
 
-import { Stage, Layer, Rect, Circle, Line } from "react-konva";
-const DrawCircle = () => {
-  const [toggle, setToggle] = useState(true);
-  const [circleSet, setcircleSet] = useState([]);
-  const [getCircle, setGetCircle] = useState(
-    JSON.parse(localStorage.getItem("circle")) || []
+  const [elementsGet, setElementsGet] = useState(
+    JSON.parse(localStorage.getItem("whitebord")) || []
   );
-  const [checkLocal, setCheckLocal] = useState(false);
-  const [newAnnotation, setNewAnnotation] = useState([]);
-  const [tool, setTool] = React.useState("pen");
-  const [lines, setLines] = React.useState([]);
-  const [getPencil, setGetPencil] = useState(
-    JSON.parse(localStorage.getItem("pencil")) || []
-  );
-  const isDrawing = React.useRef(false);
-  const handleClick = () => {
-    console.log("yes");
-    setToggle((s) => !s);
+  const [activeType, setActiveType] = useState(tool.pen);
+
+  //undo redo function
+
+  const undo = () => {
+    const rem = elementsGet.pop();
+    setRedo((s) => [...s, rem]);
+    console.log(elementsGet, "removeMe");
+    setElementsGet(
+      elementsGet.filter((i, ind) => ind !== elementsGet.length - i)
+    );
   };
-
-  const handleMouseDownPen = (e) => {
-    isDrawing.current = true;
-    const pos = e.target.getStage().getPointerPosition();
-    setLines([...lines, { tool, points: [pos.x, pos.y] }]);
-  };
-
-  const handleMouseMovePen = (e) => {
-    if (!isDrawing.current) {
-      return;
-    }
-    // console.log('ptn000')
-    const stage = e.target.getStage();
-    const point = stage.getPointerPosition();
-    let lastLine = lines[lines.length - 1];
-    lastLine.points = lastLine.points.concat([point.x, point.y]);
-
-    lines.splice(lines.length - 1, 1, lastLine);
-    setLines(lines.concat());
-    localStorage.setItem("pencil", JSON.stringify([...lines, ...getPencil]));
-  };
-
-  const handleMouseUpPen = () => {
-    isDrawing.current = false;
-  };
-
-  const handleMouseDown = (event) => {
-    if (newAnnotation.length === 0) {
-      const { x, y } = event.target.getStage().getPointerPosition();
-      setNewAnnotation([{ x, y, width: 0, height: 0, key: "0" }]);
+  const redof = () => {
+    if (redo.length > 0) {
+      console.log(elementsGet, "addMe");
+      setElementsGet([...elementsGet, redo[redo.length - 1]]);
+      setRedo(redo.filter((i, ind) => ind !== redo.length - 1));
     }
   };
 
-  const handleMouseUp = (event) => {
-    console.log("circlr+++");
-    if (newAnnotation.length === 1) {
-      const sx = newAnnotation[0].x;
-      const sy = newAnnotation[0].y;
-      const { x, y } = event.target.getStage().getPointerPosition();
-      const annotationToAdd = {
-        x: sx,
-        y: sy,
-        width: x - sx,
-        height: y - sy,
-        key: circleSet.length + 1,
-      };
-      circleSet.push(annotationToAdd);
-      setNewAnnotation([]);
-      setcircleSet(circleSet);
-      localStorage.setItem(
-        "circle",
-        JSON.stringify([...circleSet, ...newAnnotation, ...getCircle])
-      );
-      console.log(circleSet, "llll");
+  let isDraw = useRef(false);
+
+  const onMouseDown = (e) => {
+    isDraw.current = true;
+
+    setElements((s) => [
+      ...s,
+      {
+        id: activeType + "-" + Date.now(),
+        type: activeType,
+        points: [
+          e.target?.getStage().getPointerPosition().x,
+          e.target?.getStage().getPointerPosition().y,
+        ],
+        x: e.target?.getStage().getPointerPosition().x,
+        y: e.target?.getStage().getPointerPosition().y,
+        width: 0,
+        height: 0,
+        stroke: "#000",
+      },
+    ]);
+  };
+  const onMouseMove = (e) => {
+    if (!isDraw.current) return;
+    const st = e.currentTarget;
+    const pos = st.getPointerPosition();
+    if (elements.length > 0) {
+      let lastId = [...elements].pop().id;
+      const nn = e.target.getStage().findOne("#" + lastId);
+
+      switch (activeType) {
+        case tool.rectangle:
+          return nn.setAttrs({
+            width: pos.x - nn.attrs.x,
+            height: pos.y - nn.attrs.y,
+          });
+        case tool.circle:
+          return nn.setAttrs({
+            radius: pos.x - nn.attrs.x,
+          });
+        default:
+          nn.setAttrs({
+            points: nn.attrs.points.concat(pos.x, pos.y),
+            x: 0,
+            y: 0,
+          });
+      }
     }
   };
 
-  const handleMouseMove = (event) => {
-    if (newAnnotation.length === 1) {
-      const sx = newAnnotation[0].x;
-      const sy = newAnnotation[0].y;
-      const { x, y } = event.target.getStage().getPointerPosition();
-      setNewAnnotation([
-        {
-          x: sx,
-          y: sy,
-          width: x - sx,
-          height: y - sy,
-          key: "0",
-        },
-      ]);
-    }
+  const onMouseUp = (e) => {
+    isDraw.current = false;
+    let lastId = [...elements].pop().id;
+    const shapeAttrs = e.target.getStage().findOne("#" + lastId);
+    localStorage.setItem(
+      "whitebord",
+      JSON.stringify([
+        ...elements.map((i) => {
+          if (i.id === lastId) {
+            return {
+              ...i,
+              ...shapeAttrs.attrs,
+            };
+          } else {
+            console.log(e.target.getStage().findOne("#" + i.id).attrs, "i");
+            return e.target.getStage().findOne("#" + i.id).attrs;
+          }
+        }),
+        ...elementsGet,
+      ])
+    );
   };
 
-  const circleSetToDraw = [...circleSet, ...newAnnotation, ...getCircle];
-  const penSetToDraw = [...lines, ...getPencil];
-
-  useEffect(() => {
-    if (localStorage.getItem("circle")) {
-      setGetCircle(JSON.parse(localStorage.getItem("circle")));
-      setCheckLocal(true);
-      console.log(checkLocal, "kkoo0909");
-    } else {
-      setCheckLocal(false);
-      console.log(checkLocal, "kkoo0909");
-    }
-  }, [checkLocal]);
+  const store = [...elements, ...elementsGet];
 
   return (
     <>
-      <div className="absolute top-[20px] right-[120px]">
-        <button
-          onClick={handleClick}
-          className="p-2 bg-[#26eee4] rounded-lg z-40"
-        >
-          toggle
-        </button>
+      <div className="absolute right-2 top-2">
+        <Timer />
       </div>
-      {toggle ? (
-        <Stage
-          onMouseDown={handleMouseDown}
-          onMouseUp={handleMouseUp}
-          onMouseMove={handleMouseMove}
-          width={1000}
-          height={500}
-        >
-          <Layer>
-            {circleSetToDraw.map((value) => {
-              return (
-                <Circle
-                  x={value.x}
-                  y={value.y}
-                  width={value.width}
-                  height={value.width}
-                  fill="transparent"
-                  stroke="black"
-                />
-              );
-            })}
-          </Layer>
-        </Stage>
-      ) : (
-        <Stage
-          width={window.innerWidth}
-          height={window.innerHeight}
-          onMouseDown={handleMouseDownPen}
-          onMousemove={handleMouseMovePen}
-          onMouseup={handleMouseUpPen}
-        >
-          <Layer>
-            {penSetToDraw.map((line, i) => (
-              <Line
-                key={i}
-                points={line.points}
-                stroke="#000"
-                strokeWidth={5}
-                tension={0.5}
-                lineCap="round"
-                lineJoin="round"
-                globalCompositeOperation={
-                  line.tool === "eraser" ? "destination-out" : "source-over"
-                }
+      <Root>
+        <DrawingBoard>
+          <Stage
+            className="canvas-size"
+            width={`${window.innerWidth}`}
+            height={window.innerHeight}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+          >
+            <Layer>
+              {store.map((i) => {
+                return <Holder {...i} />;
+              })}
+            </Layer>
+          </Stage>
+        </DrawingBoard>
+        <Sidebar>
+          <div className="tools">
+            <div className="tool">
+              <input
+                type="radio"
+                id="pen"
+                name="shape"
+                onChange={() => {
+                  setActiveType(tool.pen);
+                }}
               />
-            ))}
-          </Layer>
-        </Stage>
-      )}
+              <label htmlFor="pen" className="text">
+                Pen
+              </label>
+            </div>
+            <div className="tool">
+              <input
+                type="radio"
+                name="shape"
+                id="rectangle"
+                onChange={() => {
+                  setActiveType(tool.rectangle);
+                }}
+              />
+              <label htmlFor="rectangle" className="text">
+                Rectangle
+              </label>
+            </div>
+            <div className="tool">
+              <input
+                type="radio"
+                id="circle"
+                name="shape"
+                onChange={() => {
+                  setActiveType(tool.circle);
+                }}
+              />
+              <label htmlFor="circle" className="text">
+                Circle
+              </label>
+            </div>
+          </div>
+          <div className="flex ">
+            <button onClick={redof} className=" p-3 bg-[#ffe0ff] rounded-[40px]">
+              redo
+            </button>
+            <button onClick={undo} className="p-2">
+              undo
+            </button>
+          </div>
+        </Sidebar>
+      </Root>
     </>
   );
-};
+}
 
 export default DrawCircle;
+
+const Root = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  gap: 1rem;
+  /* position: relative; */
+`;
+
+const Sidebar = styled.div`
+  width: 300px;
+  background-color: #eeeeee;
+  padding: 1rem;
+  position: absolute;
+  left: 0;
+  border-radius: 40px;
+  bottom: 20px;
+  z-index: 2;
+`;
+
+const DrawingBoard = styled.div`
+  .canvas-size {
+    width: 100%;
+    height: 100%;
+    background-color: #d8d5d5;
+  }
+`;

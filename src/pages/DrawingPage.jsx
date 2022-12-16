@@ -13,10 +13,27 @@ const DrawingPage = () => {
   const [newAnnotation, setNewAnnotation] = useState([]);
   const [tool, setTool] = React.useState("pen");
   const [lines, setLines] = React.useState([]);
+  const [redo, setRedo] = React.useState([]);
   const isDrawing = React.useRef(false);
   const [dataSetLocal, setDataSetLocal] = useState(
     JSON.parse(localStorage.getItem("whitebord")) || []
   );
+
+  const undof = () => {
+    const rem = dataSetLocal.pop();
+    setRedo((s) => [...s, rem]);
+    setDataSetLocal(
+      dataSetLocal.filter((i, ind) => ind !== dataSetLocal.length - i)
+    );
+  };
+  const handleredo = () => {
+    if (redo.length > 0) {
+      setDataSetLocal([...dataSetLocal, redo[redo.length - 1]]);
+      setRedo(redo.filter((i, ind) => ind !== redo.length - 1));
+    }
+  };
+
+  console.log(dataSetLocal, "hllosdso");
   const handleClickPen = (e) => {
     console.log("yes");
     setActiveTab(1);
@@ -34,17 +51,15 @@ const DrawingPage = () => {
   };
 
   const handleMouseMovePen = (e) => {
-    // no drawing - skipping
     if (!isDrawing.current) {
       return;
     }
     const stage = e.target.getStage();
     const point = stage.getPointerPosition();
     let lastLine = lines[lines.length - 1];
-    // add point
+
     lastLine.points = lastLine.points.concat([point.x, point.y]);
 
-    // replace last
     lines.splice(lines.length - 1, 1, lastLine);
     setLines(lines.concat());
     localStorage.setItem(
@@ -105,15 +120,11 @@ const DrawingPage = () => {
 
   const annotationsToDraw = [...annotations, ...newAnnotation, ...dataSetLocal];
   const linesToDraw = [...lines, ...dataSetLocal];
-  console.log(annotationsToDraw, "hiiiiii");
-  console.log(lines, "hooo");
 
   return (
     <>
-      <div className="absolute top-[20px] right-[30px]">
-        <Timer />
-      </div>
-      {/* {toggle ? ( */}
+      <div className="absolute top-[20px] right-[30px]">{/* <Timer /> */}</div>
+
       <Stage
         width={2000}
         height={950}
@@ -192,6 +203,17 @@ const DrawingPage = () => {
         <div className=" p-[10px] rounded-[33px] icon">
           <RadioButtonUncheckedIcon />
         </div>
+      </div>
+      <div className="">
+        <button onClick={undof} className="ml-5 bg-[gray] p-3 rounded-[33px]">
+          undo
+        </button>
+        <button
+          onClick={handleredo}
+          className="ml-3 bg-[gray] p-3 rounded-[33px] "
+        >
+          redo
+        </button>
       </div>
     </>
   );
